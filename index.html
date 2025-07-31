@@ -1,0 +1,468 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>圖像品質調查問卷</title>
+    <!-- 引入 Bootstrap 5 CSS -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- 引入 Bootstrap Icons -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+    <style>
+        /* 自訂樣式，讓頁面更美觀 */
+        body {
+            background-color: #f8f9fa;
+        }
+        .main-container {
+            max-width: 1000px;
+            margin-top: 2rem;
+            margin-bottom: 2rem;
+        }
+        .card {
+            border-radius: 0.75rem;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            border: none;
+        }
+        .card-img-top {
+            border-top-left-radius: 0.75rem;
+            border-top-right-radius: 0.75rem;
+            max-height: 400px;
+            object-fit: contain;
+            background-color: #e9ecef;
+        }
+        .question-group img {
+            width: 100%;
+            border-radius: 0.5rem;
+            border: 1px solid #dee2e6;
+        }
+        .reference-img {
+            max-height: 150px;
+            object-fit: contain;
+            border-radius: 0.5rem;
+            border: 1px solid #dee2e6;
+        }
+        .screen {
+            display: none; /* 預設隱藏所有畫面 */
+        }
+        #start-screen {
+            display: block; /* 初始顯示開始畫面 */
+        }
+        .timed-view-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.7);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1050;
+            flex-direction: column;
+        }
+        .timed-view-overlay img {
+            max-width: 80%;
+            max-height: 80%;
+            border-radius: 1rem;
+        }
+        .form-check-label {
+            cursor: pointer;
+        }
+        .btn-choice {
+            width: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container main-container">
+        <!-- 頁面標題 -->
+        <div class="text-center mb-4">
+            <h1 class="display-5">圖像品質調查問卷</h1>
+            <p class="lead text-muted" id="progress-text">歡迎參與本次調查</p>
+        </div>
+
+        <!-- 1. 開始畫面 -->
+        <div id="start-screen" class="screen card text-center p-5">
+            <div class="card-body">
+                <h2 class="card-title">問卷說明</h2>
+                <p class="card-text my-4" id="start-screen-text">
+                    本次調查旨在評估不同圖像生成演算法的品質。問卷共分為 <strong>4</strong> 輪。<br>
+                    您將看到一系列圖片對比，並需要根據提示回答相關問題。<br>
+                    請仔細觀察圖片，並根據您的真實感受作答。感謝您的參與！
+                </p>
+                <button id="start-btn" class="btn btn-primary btn-lg">
+                    <i class="bi bi-play-circle-fill me-2"></i>開始問卷
+                </button>
+            </div>
+        </div>
+
+        <!-- 2. 問卷問題畫面 -->
+        <div id="question-screen" class="screen">
+            <div class="card">
+                <div class="card-header text-center bg-light">
+                    <h4 id="question-title">第 1 組：組名</h4>
+                </div>
+                <div class="card-body p-4">
+                    <!-- 參考資訊區域 -->
+                    <div id="reference-area" class="mb-4 p-3 bg-light border rounded">
+                        <div class="row align-items-center">
+                            <div id="reference-images" class="col-md-5 text-center">
+                                <!-- 參考圖片會動態插入這裡 -->
+                            </div>
+                            <div id="reference-prompt" class="col-md-7">
+                                <p><strong><i class="bi bi-chat-left-text me-2"></i>參考提示詞:</strong></p>
+                                <p class="lead fs-6" id="prompt-text-content"></p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- A/B 圖片對比區域 -->
+                    <div class="row text-center question-group">
+                        <div class="col-md-6 mb-3">
+                            <h5>圖片 A</h5>
+                            <img id="image-a" src="https://placehold.co/400x300/666/fff?text=Image+A" alt="圖片A">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <h5>圖片 B</h5>
+                            <img id="image-b" src="https://placehold.co/400x300/999/fff?text=Image+B" alt="圖片B">
+                        </div>
+                    </div>
+                    <hr class="my-4">
+
+                    <!-- 問題表單 -->
+                    <form id="question-form">
+                        <div id="alert-container"></div>
+                        <!-- 問題模板 -->
+                        <div class="mb-4">
+                            <p class="fw-bold">1. 哪張圖片更符合提示詞的描述？</p>
+                            <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="q1" id="q1_a" value="A" autocomplete="off" required>
+                                <label class="btn btn-outline-primary" for="q1_a">圖片 A</label>
+                                <input type="radio" class="btn-check" name="q1" id="q1_b" value="B" autocomplete="off" required>
+                                <label class="btn btn-outline-primary" for="q1_b">圖片 B</label>
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <p class="fw-bold">2. 哪張圖片的整體視覺品質更高？</p>
+                             <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="q2" id="q2_a" value="A" autocomplete="off" required>
+                                <label class="btn btn-outline-primary" for="q2_a">圖片 A</label>
+                                <input type="radio" class="btn-check" name="q2" id="q2_b" value="B" autocomplete="off" required>
+                                <label class="btn btn-outline-primary" for="q2_b">圖片 B</label>
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <p class="fw-bold">3. 哪張圖片的美學吸引力更強？</p>
+                             <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="q3" id="q3_a" value="A" autocomplete="off" required>
+                                <label class="btn btn-outline-primary" for="q3_a">圖片 A</label>
+                                <input type="radio" class="btn-check" name="q3" id="q3_b" value="B" autocomplete="off" required>
+                                <label class="btn btn-outline-primary" for="q3_b">圖片 B</label>
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <p class="fw-bold">4. 總體來說，你更偏好哪張圖片？</p>
+                             <div class="btn-group w-100" role="group">
+                                <input type="radio" class="btn-check" name="q4" id="q4_a" value="A" autocomplete="off" required>
+                                <label class="btn btn-outline-primary" for="q4_a">圖片 A</label>
+                                <input type="radio" class="btn-check" name="q4" id="q4_b" value="B" autocomplete="off" required>
+                                <label class="btn btn-outline-primary" for="q4_b">圖片 B</label>
+                            </div>
+                        </div>
+                        <div class="mb-4">
+                            <label for="q5_slider" class="form-label fw-bold">5. 你對以上答案的確信程度有多高？ (1=不確定, 5=非常確定)</label>
+                            <div class="d-flex align-items-center">
+                                <span class="me-3">1</span>
+                                <input type="range" class="form-range" min="1" max="5" step="1" id="q5_slider" name="q5" value="3">
+                                <span class="ms-3">5</span>
+                                <span id="slider-value" class="ms-3 badge bg-secondary" style="width: 30px;">3</span>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="card-footer text-end">
+                    <button id="next-btn" class="btn btn-success">
+                        下一組 <i class="bi bi-arrow-right-circle"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. 結束畫面 -->
+        <div id="end-screen" class="screen card text-center p-5">
+             <div class="card-body">
+                <h2 class="card-title"><i class="bi bi-check-circle-fill text-success me-2"></i>問卷完成！</h2>
+                <p class="card-text my-4">
+                    非常感謝您的寶貴時間和認真作答！<br>
+                    您的反饋對我們的研究至關重要。
+                </p>
+                <button id="export-btn" class="btn btn-info btn-lg">
+                    <i class="bi bi-download me-2"></i>導出問卷結果 (JSON)
+                </button>
+            </div>
+        </div>
+
+        <!-- 4. Round 1 限時圖片預覽 -->
+        <div id="timed-view-screen" class="timed-view-overlay" style="display: none;">
+            <img id="timed-image" src="https://placehold.co/800x600/000/fff?text=Origin+Image" alt="限時預覽圖">
+            <div class="progress mt-3" style="width: 50%; height: 10px;">
+                <div id="timer-bar" class="progress-bar progress-bar-striped progress-bar-animated bg-info" role="progressbar" style="width: 100%"></div>
+            </div>
+            <h4 class="text-white mt-3">請預覽原圖 (5秒)</h4>
+        </div>
+
+    </div>
+
+    <!-- 引入 JQuery 和 Bootstrap 5 JS -->
+    <script src="https://cdn.jsdelivr.net/npm/jquery@3.7.1/dist/jquery.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+    
+    <!-- 從外部檔案引入問卷設定 -->
+    <script src="survey_data.js"></script>
+
+    <script>
+    $(document).ready(function() {
+        // --- 設定區域 ---
+        // SURVEY_DATA 現在會從 survey_data.js 檔案中讀取
+        const TOTAL_ROUNDS = 4;
+        const TIMER_DURATION = 5000; // 5秒
+
+        // --- 狀態變數 ---
+        let currentRound = 1;
+        let currentGroupIndex = 0;
+        let allAnswers = {};
+
+        // --- 元素快取 ---
+        const $startScreen = $('#start-screen');
+        const $questionScreen = $('#question-screen');
+        const $endScreen = $('#end-screen');
+        const $timedViewScreen = $('#timed-view-screen');
+        const $progressText = $('#progress-text');
+        
+        // --- 事件綁定 ---
+        $('#start-btn').on('click', startSurvey);
+        $('#next-btn').on('click', saveAndNext);
+        $('#export-btn').on('click', exportResults);
+        $('#q5_slider').on('input', function() {
+            $('#slider-value').text($(this).val());
+        });
+
+        // --- 函式定義 ---
+
+        /**
+         * 開始問卷
+         */
+        function startSurvey() {
+            // 檢查 SURVEY_DATA 是否成功載入
+            if (typeof SURVEY_DATA === 'undefined' || SURVEY_DATA.length === 0) {
+                alert("問卷設定載入失敗！請確保 survey_data.js 檔案存在且內容正確。");
+                return;
+            }
+            $startScreen.hide();
+            loadCurrentQuestion();
+        }
+
+        /**
+         * 載入當前輪次和組的問題
+         */
+        function loadCurrentQuestion() {
+            if (currentRound > TOTAL_ROUNDS) {
+                showEndScreen();
+                return;
+            }
+
+            const group = SURVEY_DATA[currentGroupIndex];
+            updateProgressText();
+            
+            // Round 1: 先顯示限時原圖
+            if (currentRound === 1) {
+                showTimedView(group, () => {
+                    displayQuestionContent(group);
+                });
+            } else {
+                // Round 2-4: 直接顯示問題
+                displayQuestionContent(group);
+            }
+        }
+        
+        /**
+         * 更新頂部的進度文字
+         */
+        function updateProgressText() {
+            const totalGroups = SURVEY_DATA.length;
+            const overallProgress = (currentRound - 1) * totalGroups + currentGroupIndex + 1;
+            const totalSteps = totalGroups * TOTAL_ROUNDS;
+             $progressText.html(`第 <strong>${currentRound} / ${TOTAL_ROUNDS}</strong> 輪 - 當前進度: <strong>${overallProgress} / ${totalSteps}</strong>`);
+        }
+
+        /**
+         * 顯示 Round 1 的限時預覽
+         * @param {object} group - 當前問題組物件
+         * @param {function} callback - 計時結束後執行的回呼
+         */
+        function showTimedView(group, callback) {
+            const imagePath = `tog/${group.id}-${group.name}/origin.jpg`;
+            $('#timed-image').attr('src', imagePath);
+            
+            const $timerBar = $('#timer-bar');
+            
+            $timerBar.css('transition', 'none'); 
+            $timerBar.css('width', '100%');
+
+            $timedViewScreen.fadeIn(400, function() {
+                setTimeout(() => {
+                    $timerBar.css('transition', `width ${TIMER_DURATION}ms linear`);
+                    $timerBar.css('width', '0%');
+                }, 50);
+
+                setTimeout(() => {
+                    $timedViewScreen.fadeOut(callback);
+                }, TIMER_DURATION);
+            });
+        }
+
+        /**
+         * 在問卷畫面上顯示具體內容
+         * @param {object} group - 當前問題組物件
+         */
+        function displayQuestionContent(group) {
+            // 重設表單
+            $('#question-form')[0].reset();
+            $('#slider-value').text('3');
+            $('#alert-container').empty();
+            $('.btn-check').prop('checked', false);
+
+            // 設定標題
+            $('#question-title').text(`第 ${currentGroupIndex + 1} 組: ${group.name}`);
+
+            // 載入提示詞
+            $('#prompt-text-content').text(group.prompt);
+
+            // 建構圖片路徑
+            const basePath = `tog/${group.id}-${group.name}/`;
+            const imageA_name = getImageNameForA(currentRound);
+            
+            $('#image-a').attr('src', basePath + imageA_name + '.jpg');
+            $('#image-b').attr('src', basePath + 'ours.jpg');
+
+            // 載入並顯示參考資訊
+            const $refImagesContainer = $('#reference-images').empty();
+            if (currentRound === 1) {
+                $refImagesContainer.append(`<img src="${basePath}sketch.jpg" class="img-fluid reference-img" alt="Sketch">`);
+            } else {
+                $refImagesContainer.append(`<img src="${basePath}origin.jpg" class="img-fluid reference-img me-2" alt="Origin">`);
+                $refImagesContainer.append(`<img src="${basePath}sketch.jpg" class="img-fluid reference-img" alt="Sketch">`);
+            }
+            
+            $questionScreen.fadeIn(400, function() {
+                // ✅ 新增：捲動到頁面頂部
+                $('html, body').animate({ scrollTop: 0 }, 'fast');
+            });
+        }
+
+        /**
+         * 根據輪次取得圖片A的檔名
+         */
+        function getImageNameForA(round) {
+            switch (round) {
+                case 1: case 2: return 'freecontrol';
+                case 3: return 'reno';
+                case 4: return 'renoop';
+                default: return 'freecontrol';
+            }
+        }
+        
+        /**
+         * 驗證表單是否所有問題都已回答
+         */
+        function validateForm() {
+            let isValid = true;
+            for (let i = 1; i <= 4; i++) {
+                if ($(`input[name="q${i}"]:checked`).length === 0) {
+                    isValid = false;
+                    break;
+                }
+            }
+            
+            if (!isValid) {
+                const $alert = $(`
+                    <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                        <strong>請回答所有問題</strong>，然後再進入下一組。
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                `);
+                $('#alert-container').html($alert);
+            } else {
+                 $('#alert-container').empty();
+            }
+            
+            return isValid;
+        }
+
+        /**
+         * 儲存當前答案並進入下一個問題
+         */
+        function saveAndNext() {
+            if (!validateForm()) {
+                return;
+            }
+
+            const group = SURVEY_DATA[currentGroupIndex];
+            const roundKey = `round-${currentRound}`;
+            const groupKey = `${group.id}-${group.name}`;
+
+            if (!allAnswers[roundKey]) {
+                allAnswers[roundKey] = {};
+            }
+
+            allAnswers[roundKey][groupKey] = {
+                q1: $(`input[name="q1"]:checked`).val(),
+                q2: $(`input[name="q2"]:checked`).val(),
+                q3: $(`input[name="q3"]:checked`).val(),
+                q4: $(`input[name="q4"]:checked`).val(),
+                q5_credibility: $('#q5_slider').val(),
+                imageA_source: getImageNameForA(currentRound),
+                imageB_source: 'ours'
+            };
+
+            $questionScreen.fadeOut(() => {
+                currentGroupIndex++;
+                if (currentGroupIndex >= SURVEY_DATA.length) {
+                    currentGroupIndex = 0;
+                    currentRound++;
+                }
+                loadCurrentQuestion();
+            });
+        }
+
+        /**
+         * 顯示結束畫面
+         */
+        function showEndScreen() {
+            $questionScreen.hide();
+            $endScreen.fadeIn();
+            $progressText.text('問卷已全部完成');
+        }
+
+        /**
+         * 導出結果為 JSON 檔案
+         */
+        function exportResults() {
+            const dataStr = JSON.stringify(allAnswers, null, 2);
+            const dataBlob = new Blob([dataStr], { type: 'application/json' });
+            const url = URL.createObjectURL(dataBlob);
+            
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'survey_results.json';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
+    });
+    </script>
+
+</body>
+</html>
