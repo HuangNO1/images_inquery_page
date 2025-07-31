@@ -312,12 +312,8 @@
             updateProgressText();
             
             if (currentRound === 1) {
-                // 第一輪的特殊處理：限時預覽
-                if (currentGroupIndex === 0 && !allAnswers['round-1']) {
-                     showTimedView(displayQuestionContentRound1);
-                } else {
-                    displayQuestionContentRound1();
-                }
+                // ✅ 修正：第一輪的每一個問題組都應該顯示限時預覽
+                showTimedView(displayQuestionContentRound1);
             } else {
                 displayQuestionContentRound2();
             }
